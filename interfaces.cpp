@@ -95,6 +95,21 @@ int main(int argc, char **argv) {
     count = ((STARSH_ssdata*)starsh_data)->particles.count;
   }
 
+  if (kernel_func == 4) {
+    ndim = 3;
+    coords = (double**)malloc(ndim * sizeof(double*));
+
+    // 3D spatial geometry for exponential kernel.
+    s_kernel = starsh_ssdata_block_exp_kernel_3d;
+    starsh_ssdata_generate((STARSH_ssdata **)&starsh_data, N, ndim,
+                           beta, nu, noise, place, sigma);
+
+    coords[0] = ((STARSH_ssdata*)starsh_data)->particles.point;
+
+    // The generated data can be used from the starsh_data variable.
+    count = ((STARSH_ssdata*)starsh_data)->particles.count;
+  }
+
   // Store offsets of the co-ordinates of each dimension.
   for (int k = 1; k < ndim; ++k) {
     coords[k] = coords[0] + k * count;

@@ -19,3 +19,4 @@ g++ ${BLAS_LIB} interfaces.o $(pkg-config --libs starsh)  -o a.out
 ./a.out 1000 1 sin_kernel_2d
 ./a.out 1000 2 sqrexp_2d
 ./a.out 1000 3 sqrexp_3d
+./a.out 1000 4 exp_3d
