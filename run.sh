@@ -12,4 +12,4 @@ BLAS_LIB="-L${MKLROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_intel_lp64 -lmkl_gnu
 
 g++ -std=c++11 ${BLAS_INCLUDE} $(pkg-config --cflags starsh) ${BLAS_LIB} \
     $(pkg-config --libs starsh) interfaces.cpp
-./a.out
+./a.out 100 10 3
