@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <fstream>
+#include <cmath>
 
 #include <starsh.h>
 #include <starsh-randtlr.h>
@@ -13,10 +14,23 @@
 
 // kernel func args:
 // 2 : 2D exp
+double frob_norm(double* matrix, int nrows, int ncols, int row_start, int col_start, int stride) {
+  double norm = 0.0;
+
+  for (int i = 0; i < nrows; ++i) {
+    for (int j = 0; j < ncols; ++j) {
+      norm += pow(matrix[(row_start + i) + (col_start + j) * stride], 2);
+    }
+  }
+
+  return std::sqrt(norm);
+}
+
 int main(int argc, char **argv) {
   STARSH_int N = atol(argv[1]);
   int kernel_func = atoi(argv[2]);
   std::string kernel_name(argv[3]);
+  int nb = atoi(argv[4]);
 
   int ndim;
   STARSH_kernel *s_kernel;
@@ -116,7 +130,7 @@ int main(int argc, char **argv) {
   }
 
   std::ofstream file;
-  file.open("stars_h_" + kernel_name + ".csv", std::ios::app | std::ios::out);
+  file.open("stars_h_large_" + kernel_name + ".csv", std::ios::app | std::ios::out);
 
 
   file << "x,y,\n";
@@ -128,6 +142,21 @@ int main(int argc, char **argv) {
   }
 
   file.close();
+
+  // generate the matrix
+  double *matrix = (double*)malloc(sizeof(double) * N * N);
+  if (kernel_func == 2) {
+    s_kernel(N, N, starsh_index + 0, starsh_index + 0,
+    starsh_data, starsh_data, matrix, N);
+
+    int nblocks = N / nb;
+    for (int i = 0; i < nblocks; ++i) {
+      for (int j = 0; j < nblocks; ++j) {
+        std::cout << "<" << i << "," << j << "> :: " << frob_norm(matrix, nb, nb, nb * i, nb * j, N) << std::endl;
+      }
+    }
+
+  }
 
   free(starsh_index);
 }

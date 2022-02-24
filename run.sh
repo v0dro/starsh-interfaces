@@ -3,7 +3,7 @@
 
 source ~/.bashrc
 
-module load intel-mkl/2020.4.304/gcc-7.3.0-52gb
+module load intel-mkl/2020.4.304/gcc-7.3.0-smdc
 
 # export PKG_CONFIG_PATH=$HOME/gitrepos/hicma-x-dev/stars-h/build/installdir/lib/pkgconfig:$PKG_CONFIG_PATH
 
@@ -16,7 +16,7 @@ set -o xtrace
 rm *csv
 g++ -std=c++11 ${BLAS_INCLUDE} $(pkg-config --cflags starsh) -c interfaces.cpp
 g++ ${BLAS_LIB} interfaces.o $(pkg-config --libs starsh)  -o a.out
-./a.out 1000 1 sin_kernel_2d
-./a.out 1000 2 sqrexp_2d
-./a.out 1000 3 sqrexp_3d
-./a.out 1000 4 exp_3d
+# ./a.out 1000 1 sin_kernel_2d
+./a.out 128 2 sqrexp_2d 16
+# ./a.out 1000 3 sqrexp_3d
+# ./a.out 1000 4 exp_3d
