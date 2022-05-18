@@ -5,11 +5,13 @@
 #include <fstream>
 #include <cmath>
 
+extern "C" {
 #include <starsh.h>
 #include <starsh-randtlr.h>
 #include <starsh-electrodynamics.h>
 #include <starsh-spatial.h>
-
+#include <starsh-fugaku_gc.h>
+}
 // Interfaces from https://github.com/bosilca/hicma-x-dev/blob/lei_tlr_release_based_on_sparse_branch/hicma_parsec/hicma_parsec.c
 
 // kernel func args:
@@ -30,9 +32,9 @@ int main(int argc, char **argv) {
   STARSH_int N = atol(argv[1]);
   int kernel_func = atoi(argv[2]);
   std::string kernel_name(argv[3]);
-  int nb = atoi(argv[4]);
+  STARSH_int nb = atoi(argv[4]);
 
-  int ndim;
+  STARSH_int ndim;
   STARSH_kernel *s_kernel;
   // This array will contain physical data that will be put into in by the
   // _generate() functions. For a 2D function, this will be a 2D array.
@@ -124,19 +126,55 @@ int main(int argc, char **argv) {
     count = ((STARSH_ssdata*)starsh_data)->particles.count;
   }
 
+  if (kernel_func == 5) {
+    ndim = 3;
+    coords =  (double**)malloc(ndim * sizeof(double*));
+    s_kernel = starsh_laplace_block_kernel;
+    starsh_laplace_grid_generate((STARSH_laplace**)&starsh_data,
+                                 N, ndim, 1e-8, place);
+    coords[0] = ((STARSH_ssdata*)starsh_data)->particles.point;
+
+    // The generated data can be used from the starsh_data variable.
+    count = ((STARSH_ssdata*)starsh_data)->particles.count;
+  }
+
+  if (kernel_func == 6) {
+    ndim = 3;
+    coords =  (double**)malloc(ndim * sizeof(double*));
+    STARSH_laplace* data = (STARSH_laplace*)malloc(sizeof(STARSH_laplace));
+
+    data->N = N;
+    data->PV = 1e-8;
+    data->ndim = ndim;
+    s_kernel = starsh_laplace_block_kernel;
+    starsh_file_grid_read_kmeans("/groups/gca50014/md_data/57126x1.dat",
+                                 &data->particles,
+                                 N, ndim);
+    coords[0] = ((STARSH_ssdata*)starsh_data)->particles.point;
+
+    // The generated data can be used from the starsh_data variable.
+    count = ((STARSH_ssdata*)starsh_data)->particles.count;
+  }
+
+
+
   // Store offsets of the co-ordinates of each dimension.
   for (int k = 1; k < ndim; ++k) {
     coords[k] = coords[0] + k * count;
   }
 
   std::ofstream file;
-  file.open("stars_h_large_" + kernel_name + ".csv", std::ios::app | std::ios::out);
+  file.open("starsh.dat", std::ios::out);
 
 
-  file << "x,y,\n";
+  file << "x,y,z\n";
+  // file << N << ndim;
   for (int i =0; i < N; ++i) {
+    std::string comma("");
     for (int k = 0; k < ndim; ++k) {
-      file << coords[k][starsh_index[i]] << ",";
+      file << comma << coords[k][starsh_index[i]];
+      // file << coords[k][starsh_index[i]];
+      comma = ",";
     }
     file << std::endl;
   }
@@ -145,18 +183,28 @@ int main(int argc, char **argv) {
 
   // generate the matrix
   double *matrix = (double*)malloc(sizeof(double) * N * N);
-  if (kernel_func == 2) {
-    s_kernel(N, N, starsh_index + 0, starsh_index + 0,
-    starsh_data, starsh_data, matrix, N);
+  int nt = floor(N / 1024);
+  int mt = floor(N / 1024);
+  for (int i = 0; i < nt; ++i) {
+    int mb = i != mt-1 ? 1024 : (N - mt * 1024);
+    for (int j = 0; j < mt; ++j) {
+      int nb = j != nt-1 ? 1024 : (N - nt * 1024);
 
-    int nblocks = N / nb;
-    for (int i = 0; i < nblocks; ++i) {
-      for (int j = 0; j < nblocks; ++j) {
-        std::cout << "<" << i << "," << j << "> :: " << frob_norm(matrix, nb, nb, nb * i, nb * j, N) << std::endl;
-      }
+      printf("i: %d mb: %d -- j: %d nb: %d\n", i, mb, j, nb);
+      s_kernel(mb, nb, starsh_index + mb * i, starsh_index + nb * j,
+               starsh_data, starsh_data, matrix, N);
     }
 
+
   }
+
+
+  // int nblocks = N / nb;
+  // for (int i = 0; i < nblocks; ++i) {
+  //   for (int j = 0; j < nblocks; ++j) {
+  //     std::cout << "<" << i << "," << j << "> :: " << frob_norm(matrix, nb, nb, nb * i, nb * j, N) << std::endl;
+  //   }
+  // }
 
   free(starsh_index);
 }
